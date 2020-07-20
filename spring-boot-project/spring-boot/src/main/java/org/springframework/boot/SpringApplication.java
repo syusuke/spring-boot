@@ -268,9 +268,14 @@ public class SpringApplication {
 		this.resourceLoader = resourceLoader;
 		Assert.notNull(primarySources, "PrimarySources must not be null");
 		this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
+		// 检测 容器类型
 		this.webApplicationType = WebApplicationType.deduceFromClasspath();
+		// 上下文初始化事件 使用 SpringFactoriesLoader.loadFactoryNames 查找并加载 META-INF/spring.factories 文件中所有可以用的 ApplicationContextInitializer
+        // org.springframework.context.ApplicationContextInitializer=XXXX,XXXX
 		setInitializers((Collection) getSpringFactoriesInstances(ApplicationContextInitializer.class));
+		// 同上,
 		setListeners((Collection) getSpringFactoriesInstances(ApplicationListener.class));
+		// 推断并设置 main 方法所在类
 		this.mainApplicationClass = deduceMainApplicationClass();
 	}
 
@@ -304,21 +309,32 @@ public class SpringApplication {
 		SpringApplicationRunListeners listeners = getRunListeners(args);
 		listeners.starting();
 		try {
+		    // 参数
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
+			// 配置环境
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, applicationArguments);
+
 			configureIgnoreBeanInfo(environment);
 			Banner printedBanner = printBanner(environment);
+
 			context = createApplicationContext();
+
 			exceptionReporters = getSpringFactoriesInstances(SpringBootExceptionReporter.class,
 					new Class[] { ConfigurableApplicationContext.class }, context);
 			prepareContext(context, environment, listeners, applicationArguments, printedBanner);
+
+			// 刷新容器(最重要的方法)
 			refreshContext(context);
+
 			afterRefresh(context, applicationArguments);
 			stopWatch.stop();
 			if (this.logStartupInfo) {
 				new StartupInfoLogger(this.mainApplicationClass).logStarted(getApplicationLog(), stopWatch);
 			}
+			// 容器启动完成
 			listeners.started(context);
+
+			// ApplicationRunner & CommandLineRunner
 			callRunners(context, applicationArguments);
 		}
 		catch (Throwable ex) {
@@ -327,6 +343,7 @@ public class SpringApplication {
 		}
 
 		try {
+		    // running event 发布
 			listeners.running(context);
 		}
 		catch (Throwable ex) {
@@ -342,6 +359,7 @@ public class SpringApplication {
 		ConfigurableEnvironment environment = getOrCreateEnvironment();
 		configureEnvironment(environment, applicationArguments.getSourceArgs());
 		ConfigurationPropertySources.attach(environment);
+		// 事件
 		listeners.environmentPrepared(environment);
 		bindToSpringApplication(environment);
 		if (!this.isCustomEnvironment) {
@@ -394,6 +412,7 @@ public class SpringApplication {
 	}
 
 	private void refreshContext(ConfigurableApplicationContext context) {
+	    // 调用
 		refresh((ApplicationContext) context);
 		if (this.registerShutdownHook) {
 			try {
@@ -585,6 +604,7 @@ public class SpringApplication {
 						"Unable create a default ApplicationContext, please specify an ApplicationContextClass", ex);
 			}
 		}
+		// r反射创建
 		return (ConfigurableApplicationContext) BeanUtils.instantiateClass(contextClass);
 	}
 
